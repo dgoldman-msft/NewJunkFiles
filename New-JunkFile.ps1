@@ -85,25 +85,25 @@ function New-Junkfile {
         [object]
         $DefaultType = 'Word',
 
-        [parameter(Position = '2')]
+        [parameter(Position = '2', ParameterSetName = 'EmailSet')]
         [string]
         $MailFrom = "Administrator@Contoso.com",
 
-        [parameter(Position = '3')]
+        [parameter(Position = '3', ParameterSetName = 'EmailSet')]
         [string]
         $MailTo = "Administrator@Contoso.com",
 
-        [parameter(Position = '4')]
+        [parameter(Position = '4', ParameterSetName = 'FileSet')]
         [ValidateSet('Tiny', 'Small', 'Medium', 'Large', 'Massive', 'StupidLarge')]
         [string]
         $FileSize = "Tiny",
 
-        [parameter(Position = '5')]
+        [parameter(Position = '5', ParameterSetName = 'FileSet')]
         [ValidateRange(1, 100)]
         [int]
         $NumberOfWords = 5,
 
-        [parameter(Position = '6')]
+        [parameter(Position = '6', ParameterSetName = 'FileSet')]
         [Int]
         $NumberOfFilesToCreate = 1
     )
@@ -130,24 +130,26 @@ function New-Junkfile {
     
     process {
         try {
-            Write-Verbose 'Searching GAC for assembly Microsoft.Office.Interop.Word'
-            if (-NOT ([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.Location -Like '*Microsoft.Office.Interop.Word*' })) {
-                $currentLocation = Get-Location
-                Set-Location (Join-Path -Path $env:HOMEDRIVE -ChildPath '\')
-                Write-Verbose 'Searching for assembly Microsoft.Office.Interop.Word'
-                # Find the assembly so we can load it into the GAC
-                $found = Get-ChildItem -Recurse -Filter 'Microsoft.Office.Interop.Word.dll' -ErrorAction SilentlyContinue
-                if ($found) { 
-                    Write-Verbose -Message "Assembly 'Microsoft.Office.Interop.Word.dll' found! Loading assembly"
-                    Add-Type -Path (Join-Path -Path $found.Directory.FullName -ChildPath 'Microsoft.Office.Interop.Word.dll') 
+            if ($DefaultType -eq 'Word' -or $DefaultType -eq 'Excel') {
+                Write-Verbose 'Searching GAC for assembly Microsoft.Office.Interop.Word'
+                if (-NOT ([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.Location -Like '*Microsoft.Office.Interop.Word*' })) {
+                    $currentLocation = Get-Location
+                    Set-Location (Join-Path -Path $env:HOMEDRIVE -ChildPath '\')
+                    Write-Verbose 'Searching for assembly Microsoft.Office.Interop.Word'
+                    # Find the assembly so we can load it into the GAC
+                    $found = Get-ChildItem -Recurse -Filter 'Microsoft.Office.Interop.Word.dll' -ErrorAction SilentlyContinue
+                    if ($found) { 
+                        Write-Verbose -Message "Assembly 'Microsoft.Office.Interop.Word.dll' found! Loading assembly"
+                        Add-Type -Path (Join-Path -Path $found.Directory.FullName -ChildPath 'Microsoft.Office.Interop.Word.dll') 
+                    }
+                    else {
+                        Write-Verbose "Assembly 'Microsoft.Office.Interop.Word.dll' NOT found! This will stop you from creating word Excel and PDF documents!"
+                    }
+                    Set-Location $currentLocation
                 }
                 else {
-                    Write-Verbose "Assembly 'Microsoft.Office.Interop.Word.dll' NOT found! This will stop you from creating word Excel and PDF documents!"
+                    Write-Verbose "Assembly 'Microsoft.Office.Interop.Word.dll' found and is already loaded"
                 }
-                Set-Location $currentLocation
-            }
-            else {
-                Write-Verbose "Assembly 'Microsoft.Office.Interop.Word.dll' found and is already loaded"
             }
         }
         catch {
@@ -179,7 +181,7 @@ function New-Junkfile {
                             $mailMessage.From = New-Object System.Net.Mail.MailAddress($MailFrom)
                             $mailMessage.To.Add($MailTo)
                             $mailMessage.Subject = "Test .eml file-$script:counter"
-                            $mailMessage.Body = "This is a test message. Message number($script:counter)"
+                            $mailMessage.Body = $script:paragraph
                             
                             $smtpClient = New-Object System.Net.Mail.SmtpClient
                             $smtpClient.DeliveryMethod = [System.Net.Mail.SmtpDeliveryMethod]::SpecifiedPickupDirectory
