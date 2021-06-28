@@ -124,7 +124,7 @@ function New-Junkfile {
             }
         }
         catch {
-            Write-Host -ForegroundColor  Red 'ERROR: $_'
+            Write-Host -ForegroundColor Red 'ERROR: $_'
         }
     }
     
@@ -136,6 +136,7 @@ function New-Junkfile {
                     $currentLocation = Get-Location
                     Set-Location (Join-Path -Path $env:HOMEDRIVE -ChildPath '\')
                     Write-Verbose 'Searching for assembly Microsoft.Office.Interop.Word'
+                    
                     # Find the assembly so we can load it into the GAC
                     $found = Get-ChildItem -Recurse -Filter 'Microsoft.Office.Interop.Word.dll' -ErrorAction SilentlyContinue
                     if ($found) { 
@@ -143,7 +144,8 @@ function New-Junkfile {
                         Add-Type -Path (Join-Path -Path $found.Directory.FullName -ChildPath 'Microsoft.Office.Interop.Word.dll') 
                     }
                     else {
-                        Write-Verbose "Assembly 'Microsoft.Office.Interop.Word.dll' NOT found! This will stop you from creating word Excel and PDF documents!"
+                        Write-Host -ForegroundColor Red "Assembly 'Microsoft.Office.Interop.Word.dll' NOT found! This will stop you from creating word Excel and PDF documents!"
+                        return
                     }
                     Set-Location $currentLocation
                 }
@@ -153,7 +155,7 @@ function New-Junkfile {
             }
         }
         catch {
-            Stop-PSFFunction -String 'ERROR: $_' -Cmdlet $PSCmdlet -ErrorRecord $_ -EnableException $EnableException
+            Write-Host -ForegroundColor Red 'ERROR: $_'
         }
         # Generate random document text
         Write-Host -ForegroundColor Green "File size selection: $($FileSize)`r`nNumber of words to use: $($NumberOfWords)"
@@ -190,11 +192,12 @@ function New-Junkfile {
                             $smtpClient.Dispose()
                             
                             $mailMessage.Dispose()
-                            Write-PSFMessage -Level Verbose -Message "Email {0} created" -StringValues $emailCounter
+                            Write-Verbose "Email $($emailCounter) created"
                             $emailCounter ++
                         }
                         catch {
-                            Write-Host -ForegroundColor Red 'ERROR: $_'
+                            Write-Host -ForegroundColor Red 'Word Error: $_'
+                            return
                         }
                     }
                     
@@ -231,7 +234,8 @@ function New-Junkfile {
                             } -ArgumentList $ExcelOutputPath, $filename, $script:counter
                         }
                         catch {
-                            Write-Host -ForegroundColor Red 'ERROR: $_'
+                            Write-Host -ForegroundColor Red 'Excel Error: $_'
+                            return
                         }
                     }
                                                 
@@ -242,7 +246,8 @@ function New-Junkfile {
                             Write-PSFMessage -Level Verbose -Message "Text doc created: {0}" -StringValues $txtFile
                         }
                         catch {
-                            Write-Host -ForegroundColor Red 'ERROR: $_'
+                            Write-Host -ForegroundColor Red 'Text Error: $_'
+                            return
                         }
                     }
 
@@ -259,7 +264,8 @@ function New-Junkfile {
                             Write-Verbose "Pdf created: $($pdFile)"
                         }
                         catch {
-                            Write-Host -ForegroundColor Red 'ERROR: $_'
+                            Write-Host -ForegroundColor Red 'PDF Error: $_'
+                            return
                         }
                     }
 
@@ -273,11 +279,12 @@ function New-Junkfile {
                             $customObject.document.SaveAs($savePath)
                             $customObject.document.Close()
                             $customObject.word.Quit()
-                            Write-PSFMessage -Level Verbose -Message "Word doc created: {0}" -StringValues $wordFile
+                            Write-Verbose "Word doc created: $($wordFile)"
                             $null = [System.Runtime.Interopservices.Marshal]::ReleaseComObject($customObject.word)
                         }
                         catch {
-                            Write-Host -ForegroundColor Red 'ERROR: $_'
+                            Write-Host -ForegroundColor Red 'Word Error: $_'
+                            return
                         }
                     }
                 }
@@ -338,7 +345,7 @@ function New-Document {
             $selection.TypeText($script:paragraph)
         }
         catch {
-            Write-Host -ForegroundColor Red 'ERROR: $_'
+            Write-Host -ForegroundColor Red 'Word Application Error: $_'
         }
        
         # Return the document
