@@ -120,6 +120,10 @@ function New-Junkfile {
             foreach ($directory in $directories) {
                 if (-NOT (Test-Path -Path $directory)) {
                     $null = New-Item -Path $directory -ItemType Directory -ErrorAction Stop
+                    Write-Verbose "Creating directory structure for: $($OutputPath)"
+                }
+                else {
+                    Write-Verbose "Directory: $($OutputPath) found!"
                 }
             }
         }
@@ -127,11 +131,12 @@ function New-Junkfile {
             Write-Host -ForegroundColor Red 'ERROR: $_'
         }
     }
-    
+
     process {
         try {
             if ($DefaultType -eq 'Word' -or $DefaultType -eq 'Excel') {
                 Write-Verbose 'Searching GAC for assembly Microsoft.Office.Interop.Word'
+
                 if (-NOT ([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.Location -Like '*Microsoft.Office.Interop.Word*' })) {
                     $currentLocation = Get-Location
                     Set-Location (Join-Path -Path $env:HOMEDRIVE -ChildPath '\')
@@ -141,12 +146,16 @@ function New-Junkfile {
                     $found = Get-ChildItem -Recurse -Filter 'Microsoft.Office.Interop.Word.dll' -ErrorAction SilentlyContinue
                     if ($found) { 
                         Write-Verbose -Message "Assembly 'Microsoft.Office.Interop.Word.dll' found! Loading assembly"
-                        Add-Type -Path (Join-Path -Path $found.Directory.FullName -ChildPath 'Microsoft.Office.Interop.Word.dll') 
                     }
                     else {
-                        Write-Host -ForegroundColor Red "Assembly 'Microsoft.Office.Interop.Word.dll' NOT found! This will stop you from creating word Excel and PDF documents!"
+                        Write-Host -ForegroundColor Red "Assembly 'Microsoft.Office.Interop.Word.dll' NOT found! Trying to install from the NuGet repository!"
+                        Write-Host -ForegroundColor Red "Installing and registering Nuget as the Package Sourec / Provider!"
+                        Find-PackageProvider -Name NuGet | Install-PackageProvider -Force
+                        Register-PackageSource -Name nuget.org -Location https://www.nuget.org/api/v2 -ProviderName NuGet
+                        Install-Package -Name Microsoft.Office.Interop.Word -Source 'nuget.org' -Force
                         return
                     }
+                    Add-Type -Path (Join-Path -Path $found.Directory.FullName -ChildPath 'Microsoft.Office.Interop.Word.dll') 
                     Set-Location $currentLocation
                 }
                 else {
@@ -155,7 +164,8 @@ function New-Junkfile {
             }
         }
         catch {
-            Write-Host -ForegroundColor Red 'ERROR: $_'
+            Write-Host -ForegroundColor Red "ERROR: $_"
+            return
         }
         # Generate random document text
         Write-Host -ForegroundColor Green "File size selection: $($FileSize)`r`nNumber of words to use: $($NumberOfWords)"
@@ -196,7 +206,7 @@ function New-Junkfile {
                             $emailCounter ++
                         }
                         catch {
-                            Write-Host -ForegroundColor Red 'Word Error: $_'
+                            Write-Host -ForegroundColor Red "Word Error: $_"
                             return
                         }
                     }
@@ -234,7 +244,7 @@ function New-Junkfile {
                             } -ArgumentList $ExcelOutputPath, $filename, $script:counter
                         }
                         catch {
-                            Write-Host -ForegroundColor Red 'Excel Error: $_'
+                            Write-Host -ForegroundColor Red "Excel Error: $_"
                             return
                         }
                     }
@@ -243,10 +253,10 @@ function New-Junkfile {
                         try {
                             $txtFile = "TextDoc-$fileName-$script:counter.txt"
                             $null = New-Item -Path $TextOutputPath -Name $txtFile -ItemType File -Value $paragraph -ErrorAction Stop
-                            Write-PSFMessage -Level Verbose -Message "Text doc created: {0}" -StringValues $txtFile
+                            Write-Verbose "Text doc created: {0}"
                         }
                         catch {
-                            Write-Host -ForegroundColor Red 'Text Error: $_'
+                            Write-Host -ForegroundColor Red "Text Error: $_"
                             return
                         }
                     }
@@ -264,7 +274,7 @@ function New-Junkfile {
                             Write-Verbose "Pdf created: $($pdFile)"
                         }
                         catch {
-                            Write-Host -ForegroundColor Red 'PDF Error: $_'
+                            Write-Host -ForegroundColor Red "PDF Error: $_"
                             return
                         }
                     }
@@ -283,7 +293,7 @@ function New-Junkfile {
                             $null = [System.Runtime.Interopservices.Marshal]::ReleaseComObject($customObject.word)
                         }
                         catch {
-                            Write-Host -ForegroundColor Red 'Word Error: $_'
+                            Write-Host -ForegroundColor Red "Word Error: $_"
                             return
                         }
                     }
@@ -345,9 +355,10 @@ function New-Document {
             $selection.TypeText($script:paragraph)
         }
         catch {
-            Write-Host -ForegroundColor Red 'Word Application Error: $_'
+            Write-Host -ForegroundColor Red "Word Application Error: $_"
+            return
         }
-       
+
         # Return the document
         [PSCustomObject] @{
             Document = $document
