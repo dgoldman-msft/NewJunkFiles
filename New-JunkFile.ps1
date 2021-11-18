@@ -4,7 +4,7 @@ function New-Junkfile {
             Create temp files
         
         .DESCRIPTION
-            Create email, word, text, pdf or csv files for a lab for mailflow and migration purposes
+            Create email, word, text, pdf or csv files for a lab for mallow and migration purposes
         
         .PARAMETER OutputPath
             Default save location
@@ -31,15 +31,15 @@ function New-Junkfile {
             File size you want to generate
         
         .PARAMETER NumberOfWords
-            Number of words per sentance
+            Number of words per sentence
         
         .PARAMETER NumberOfFilesToCreate
             How many files to create
         
         .EXAMPLE
-            PS C:\> New-Junkfile -DefaultType txt -FileSize StupidLarge -NumberOfFilesToCreate 1 -NumberOfWords 100
+            PS C:\> New-Junkfile -DefaultType Text -FileSize StupidLarge -NumberOfFilesToCreate 1 -NumberOfWords 100
 
-            Will create 1 extremly large txt file 
+            Will create 1 extremely large text file 
 
         .EXAMPLE
             PS C:\> New-Junkfile -DefaultType Word, Excel -FileSize Large -NumberOfFilesToCreate 25 -NumberOfWords 5
